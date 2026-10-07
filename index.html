@@ -104,6 +104,7 @@ header h1{font-size:20px;margin:0}
   padding:12px 0 calc(12px + env(safe-area-inset-bottom));margin-top:12px}
 .sbtns button{padding:15px;border-radius:14px;font-weight:700;font-size:17px}
 .primary{flex:1;background:var(--pri);color:#fff}
+.ghost{background:var(--bg);color:var(--text);border:1px solid var(--line)!important;padding-left:20px!important;padding-right:20px!important}
 .danger{background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg);padding-left:20px!important;padding-right:20px!important}
 button:disabled{opacity:.5}
 /* login */
@@ -147,6 +148,8 @@ button:disabled{opacity:.5}
     <header>
       <h1>UU</h1>
       <div class="hbtns">
+        <a id="sheetLink" class="chip hidden" href="https://docs.google.com/spreadsheets/d/1v721086dQWG_ls9Ik_91kO3XDmFsaZQt8s67gG71Vfo/edit" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">試算表</a>
+        <a id="sheetLink" class="chip hidden" href="https://docs.google.com/spreadsheets/d/1v721086dQWG_ls9Ik_91kO3XDmFsaZQt8s67gG71Vfo/edit" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">試算表</a>
         <button id="refresh" class="chip" aria-label="重新整理">↻</button>
         <button id="who" class="chip"></button>
       </div>
@@ -208,6 +211,7 @@ button:disabled{opacity:.5}
   </div>
   <div id="preview" class="preview"></div>
   <div class="sbtns">
+    <button id="cancel2" class="ghost">取消</button>
     <button id="del" class="danger hidden">刪除</button>
     <button id="save" class="primary">儲存</button>
   </div>
@@ -372,6 +376,8 @@ function render(){
   const {U,N}=S.bal;
   const v=V();
   $('kU').textContent=v.kU;
+  $('sheetLink').classList.toggle('hidden',isRR());
+  $('sheetLink').classList.toggle('hidden',isRR());
   $('balU').textContent=fU(U);
   if(isRR()){
     $('kN').textContent=N<0?'多給 MM 的 N':'欠 MM 的 N';
@@ -459,10 +465,10 @@ function openSheet(type,t,prefill){
   $('chips').innerHTML=recentRates().map(r=>`<button type="button" data-r="${r}">${r}</button>`).join('');
   setType(type);
   $('sheetBg').classList.remove('hidden'); $('sheet').classList.add('open');
-  setTimeout(()=>{ (prefill?$('iRate'):(type==='WITHDRAW'?$('iN'):$('iU'))).focus(); },230);
+  if(!t) setTimeout(()=>{ (prefill?$('iRate'):(type==='WITHDRAW'?$('iN'):$('iU'))).focus(); },230);
 }
 function closeSheet(){ S.f.open=false; $('sheet').classList.remove('open'); $('sheetBg').classList.add('hidden'); document.activeElement&&document.activeElement.blur(); }
-$('sClose').onclick=closeSheet; $('sheetBg').onclick=closeSheet;
+$('sClose').onclick=closeSheet; $('cancel2').onclick=closeSheet; $('sheetBg').onclick=closeSheet;
 function setType(type){
   const f=S.f; f.type=type;
   [...$('seg').children].forEach(b=>b.classList.toggle('on',b.dataset.t===type));
