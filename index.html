@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>U↔N 記帳</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="U↔N">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--text:#16181d;--sub:#6b7280;--line:#e5e7eb;
+  --pri:#2563eb;--pri-t:#fff;--u:#0f9d74;--n:#c2410c;--neg:#dc2626;--soft:#eef2ff;
+  --r:16px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1115;--card:#1a1d23;--text:#f1f2f4;--sub:#9aa1ad;--line:#2a2e36;
+  --pri:#3b82f6;--u:#34d399;--n:#fb923c;--neg:#f87171;--soft:#1e2433;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:16px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input{font:inherit;font-size:18px;color:var(--text)}
+.hidden{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px calc(110px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 10px}
+header h1{font-size:20px;margin:0}
+.hbtns{display:flex;gap:8px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px}
+.bal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bal .c{background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--line)}
+.bal .k{font-size:13px;color:var(--sub)}
+.bal .v{font-size:24px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;word-break:break-all}
+.bal .s{font-size:12px;color:var(--sub);margin-top:2px}
+.v.u{color:var(--u)}.v.n{color:var(--n)}.v.neg{color:var(--neg)}
+.debt{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:color-mix(in srgb,var(--neg) 12%,var(--card));border:1px solid color-mix(in srgb,var(--neg) 35%,transparent);
+  border-radius:var(--r);padding:12px 14px;font-size:14px}
+.debt button{background:var(--neg);color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;white-space:nowrap}
+.tabs{display:flex;gap:6px;margin:16px 0 8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;padding:9px;border-radius:9px;font-weight:600;color:var(--sub)}
+.tabs button.on{background:var(--soft);color:var(--pri)}
+.day{font-size:13px;color:var(--sub);margin:14px 4px 6px}
+.item{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:12px;margin-bottom:8px;width:100%;text-align:left}
+.ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:15px}
+.ic.DEPOSIT{background:color-mix(in srgb,var(--u) 16%,transparent);color:var(--u)}
+.ic.WITHDRAW{background:color-mix(in srgb,var(--n) 16%,transparent);color:var(--n)}
+.ic.CONVERT{background:var(--soft);color:var(--pri)}
+.mid{flex:1;min-width:0}
+.t1{font-weight:600;font-size:15px}
+.t2{font-size:12.5px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.amt{text-align:right;font-variant-numeric:tabular-nums;font-size:14.5px;font-weight:600;line-height:1.4}
+.plus{color:var(--u)}.minus{color:var(--neg)}
+.empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
+.more{width:100%;padding:12px;color:var(--pri);font-weight:600}
+.logi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px;font-size:13px}
+.logi .h{display:flex;justify-content:space-between;margin-bottom:6px}
+.badge{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--soft);color:var(--pri);font-weight:600}
+.badge.刪除{background:color-mix(in srgb,var(--neg) 15%,transparent);color:var(--neg)}
+.logi .b{color:var(--sub);word-break:break-all}
+.logi .a{word-break:break-all;margin-top:2px}
+/* bottom action bar */
+.bar{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+.bar .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.bar button{padding:14px 4px;border-radius:14px;font-weight:700;font-size:15.5px;color:#fff}
+.b-dep{background:var(--u)}.b-wd{background:var(--n)}.b-cv{background:var(--pri)}
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(--card);border-radius:20px 20px 0 0;
+  max-height:94vh;overflow:auto;transform:translateY(105%);transition:transform .22s ease;
+  padding:8px 16px 0}
+.sheet.open{transform:none}
+.sheet .in{max-width:560px;margin:0 auto}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 10px}
+.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.shead h2{font-size:18px;margin:0}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--bg);border-radius:12px;padding:4px;gap:4px}
+.seg button{padding:10px 2px;border-radius:9px;font-weight:600;font-size:14.5px;color:var(--sub)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.hint{font-size:13px;color:var(--sub);margin:10px 2px 4px;line-height:1.5}
+.fields{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.f .lb{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;color:var(--sub);margin:0 2px 5px}
+.f .row{display:flex;gap:8px}
+.f input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);outline:none}
+.f input:focus{border-color:var(--pri)}
+.f input[readonly]{opacity:.75}
+.f input.big{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.sign{flex:none;width:56px;border-radius:12px;font-size:24px;font-weight:700;background:var(--soft);color:var(--pri)}
+.sign.neg{background:color-mix(in srgb,var(--neg) 15%,transparent);color:var(--neg)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.chips button{font-size:13px;padding:5px 10px;border-radius:999px;background:var(--soft);color:var(--pri);font-weight:600}
+.preview{margin-top:14px;background:var(--bg);border-radius:12px;padding:12px;font-size:14px;line-height:1.7;font-variant-numeric:tabular-nums}
+.preview b{font-weight:700}
+.sbtns{position:sticky;bottom:0;background:var(--card);display:flex;gap:10px;
+  padding:12px 0 calc(12px + env(safe-area-inset-bottom));margin-top:12px}
+.sbtns button{padding:15px;border-radius:14px;font-weight:700;font-size:17px}
+.primary{flex:1;background:var(--pri);color:#fff}
+.danger{background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg);padding-left:20px!important;padding-right:20px!important}
+button:disabled{opacity:.5}
+/* login */
+.login{max-width:420px;margin:0 auto;padding:calc(40px + env(safe-area-inset-top)) 20px 40px}
+.login h1{font-size:24px;margin:0 0 6px}
+.login p{color:var(--sub);margin:0 0 20px;font-size:14px}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.names button{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;font-weight:700;font-size:17px}
+.names button.on{border-color:var(--pri);color:var(--pri)}
+.login input{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);
+  font-size:24px;letter-spacing:8px;text-align:center;outline:none}
+.login .primary{width:100%;margin-top:14px;padding:16px;border-radius:14px;font-weight:700;font-size:17px}
+.err{color:var(--neg);font-size:14px;margin-top:10px;min-height:20px}
+.load{position:fixed;top:0;left:0;height:3px;background:var(--pri);z-index:30;width:0;transition:width .3s}
+.load.on{width:70%;transition:width 3s ease-out}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-150%);z-index:40;
+  background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;
+  transition:transform .25s;max-width:90vw}
+.toast.show{transform:translate(-50%,0)}
+.demo{background:#fef3c7;color:#92400e;font-size:12.5px;text-align:center;padding:6px}
+</style>
+</head>
+<body>
+<div id="demoBar" class="demo hidden">預覽模式：尚未設定 API_URL，資料不會同步</div>
+<div id="load" class="load"></div>
+<div id="toast" class="toast"></div>
+
+<!-- 登入 -->
+<div id="login" class="login hidden">
+  <h1>U ↔ N 記帳</h1>
+  <p>選你的名字，輸入 PIN。之後這支手機會記住你。</p>
+  <div id="names" class="names"></div>
+  <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="PIN" autocomplete="off">
+  <button id="loginBtn" class="primary">進入</button>
+  <div id="loginErr" class="err"></div>
+</div>
+
+<!-- 主畫面 -->
+<div id="main" class="hidden">
+  <div class="wrap">
+    <header>
+      <h1>U ↔ N</h1>
+      <div class="hbtns">
+        <button id="refresh" class="chip" aria-label="重新整理">↻</button>
+        <button id="who" class="chip"></button>
+      </div>
+    </header>
+    <section class="bal">
+      <div class="c"><div class="k">U 餘額（未定匯率）</div><div id="balU" class="v u">0</div><div class="s">USDT</div></div>
+      <div class="c"><div class="k">N Credit</div><div id="balN" class="v n">0</div><div id="balNs" class="s">NTD</div></div>
+    </section>
+    <div id="debt" class="debt hidden"><span id="debtTxt"></span><button id="debtBtn">沖銷</button></div>
+    <div class="tabs">
+      <button data-tab="tx" class="on">紀錄</button>
+      <button data-tab="log">編輯 Log</button>
+    </div>
+    <div id="list"></div>
+  </div>
+  <nav class="bar"><div class="in">
+    <button class="b-dep" data-open="DEPOSIT">＋ 儲值 U</button>
+    <button class="b-wd" data-open="WITHDRAW">領回 N</button>
+    <button class="b-cv" data-open="CONVERT">轉換／沖銷</button>
+  </div></nav>
+</div>
+
+<!-- 記錄表單 -->
+<div id="sheetBg" class="sheet-bg hidden"></div>
+<div id="sheet" class="sheet"><div class="in">
+  <div class="grab"></div>
+  <div class="shead"><h2 id="sTitle">新增紀錄</h2><button id="sClose" class="chip">取消</button></div>
+  <div id="seg" class="seg">
+    <button data-t="DEPOSIT">儲值 U</button>
+    <button data-t="WITHDRAW">領回 N</button>
+    <button data-t="CONVERT">轉換／沖銷</button>
+  </div>
+  <div id="hint" class="hint"></div>
+  <div class="fields">
+    <div class="f" id="fU">
+      <div class="lb"><span id="lbU">U（USDT）</span></div>
+      <div class="row">
+        <button type="button" id="sign" class="sign">＋</button>
+        <input id="iU" class="big" inputmode="decimal" enterkeyhint="next" placeholder="0" autocomplete="off">
+      </div>
+    </div>
+    <div class="f" id="fRate">
+      <div class="lb"><span id="lbRate">匯率</span></div>
+      <input id="iRate" inputmode="decimal" enterkeyhint="next" autocomplete="off">
+      <div id="chips" class="chips"></div>
+    </div>
+    <div class="f" id="fN">
+      <div class="lb"><span id="lbN">N（NTD）</span></div>
+      <input id="iN" class="big" inputmode="decimal" enterkeyhint="next" placeholder="0" autocomplete="off">
+    </div>
+    <div class="f" id="fNote" style="order:10">
+      <div class="lb"><span>備註</span></div>
+      <input id="iNote" enterkeyhint="done" placeholder="例如：信義區面交" autocomplete="off">
+    </div>
+    <div class="f" id="fDate" style="order:11">
+      <div class="lb"><span>日期時間</span></div>
+      <input id="iDate" type="datetime-local">
+    </div>
+  </div>
+  <div id="preview" class="preview"></div>
+  <div class="sbtns">
+    <button id="del" class="danger hidden">刪除</button>
+    <button id="save" class="primary">儲存</button>
+  </div>
+</div></div>
+
+<script>
+/* ================= 資料介面（正式 / 預覽） ================= */
+/* ▼▼▼ 把 Apps Script 部署後的網址（結尾是 /exec）貼在下面引號裡 ▼▼▼ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxgTT8ahHG5iCVmpklccKykjJTMhHL3Z63QbqEtda5KTMrPWG3kQpmLxx9AeUEE019o9w/exec';
+/* ▲▲▲ 只需要改這一行 ▲▲▲ */
+
+const DEMO = !API_URL;
+async function callApi(fn, args){
+  let r;
+  try{
+    r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ fn, args }), redirect:'follow' });
+  }catch(e){ throw new Error('連不上伺服器，請檢查網路'); }
+  let j; try{ j = await r.json(); }catch(e){ throw new Error('伺服器回應異常，請確認 API 網址和部署權限'); }
+  if(!j.ok) throw new Error(j.error);
+  return j.data;
+}
+const api = DEMO ? demoApi() : new Proxy({}, { get: (_, fn) => (...args) => callApi(fn, args) });
+
+function demoApi(){
+  const users=['MT','HR']; let txs=[], log=[], seq=1;
+  const now=Date.now(), H=3600e3;
+  const seed=[
+    {type:'DEPOSIT',u:1000,rate:null,n:null,note:'轉帳 TRC20',date:now-50*H},
+    {type:'WITHDRAW',n:16080,rate:32.16,u:500,note:'面交',date:now-26*H},
+    {type:'WITHDRAW',n:20000,rate:32.2,u:621.118,note:'HR 先給',date:now-2*H},
+  ];
+  seed.forEach(s=>txs.push(Object.assign({id:'D'+seq++,by:'MT',createdAt:s.date,editBy:'',editAt:0,deleted:false},s)));
+  const d=a=>({me:a?a.name:'MT',txs:txs.filter(t=>!t.deleted).map(t=>Object.assign({},t))});
+  const chk=a=>{ if(!a||users.indexOf(a.name)<0||!a.pin) throw new Error('AUTH:名字或 PIN 錯誤'); };
+  const w=f=>(...x)=>new Promise((res,rej)=>setTimeout(()=>{try{res(f(...x))}catch(e){rej(e)}},250));
+  return {
+    getUsers:w(()=>users),
+    getData:w(a=>{chk(a);return d(a);}),
+    addTx:w((a,t)=>{chk(a);const o=Object.assign({id:'D'+seq++,by:a.name,createdAt:Date.now(),editBy:'',editAt:0,deleted:false},t);txs.push(o);log.unshift({t:Date.now(),user:a.name,action:'新增',id:o.id,before:'',after:JSON.stringify(t)});return d(a);}),
+    updateTx:w((a,id,t)=>{chk(a);const o=txs.find(x=>x.id===id);const b=JSON.stringify(o);Object.assign(o,t,{editBy:a.name,editAt:Date.now()});log.unshift({t:Date.now(),user:a.name,action:'修改',id,before:b,after:JSON.stringify(t)});return d(a);}),
+    deleteTx:w((a,id)=>{chk(a);const o=txs.find(x=>x.id===id);o.deleted=true;log.unshift({t:Date.now(),user:a.name,action:'刪除',id,before:JSON.stringify(o),after:''});return d(a);}),
+    getLog:w(a=>{chk(a);return log;}),
+  };
+}
+
+/* ================= 狀態 ================= */
+const $=id=>document.getElementById(id);
+const TYPES={DEPOSIT:'儲值 U',WITHDRAW:'領回 N',CONVERT:'轉換'};
+const ICON={DEPOSIT:'存',WITHDRAW:'領',CONVERT:'轉'};
+const S={auth:null,me:'',txs:[],bal:{U:0,N:0,eff:{}},tab:'tx',show:50,
+  f:{open:false,id:null,type:'DEPOSIT',sign:1,last:'u',createdAt:0},busy:false};
+const store={get(){try{return JSON.parse(localStorage.getItem('utn_auth')||'null')}catch(e){return null}},
+  set(v){try{v?localStorage.setItem('utn_auth',JSON.stringify(v)):localStorage.removeItem('utn_auth')}catch(e){}}};
+
+/* ================= 計算：依時間重算兩個餘額 ================= */
+const r6=x=>Math.round(x*1e6)/1e6;
+function replay(list){
+  const s=[...list].sort((a,b)=>(a.date-b.date)||(a.createdAt-b.createdAt));
+  let U=0,N=0; const eff={};
+  for(const t of s){
+    let dU=0,dN=0,short=0;
+    if(t.type==='DEPOSIT'){ if(t.rate) dN=t.u*t.rate; else dU=t.u; }
+    else if(t.type==='WITHDRAW'){
+      if(t.rate){ const use=Math.max(0,Math.min(U,t.n/t.rate)); dU=-use; short=t.n-use*t.rate; dN=-short; }
+      else dN=-t.n;
+    } else if(t.type==='CONVERT'){ dU=-t.u; dN=t.u*t.rate; }
+    U=r6(U+dU); N=r6(N+dN); eff[t.id]={dU:r6(dU),dN:r6(dN),short:r6(short),U,N};
+  }
+  return {U,N,eff};
+}
+
+/* ================= 格式 ================= */
+const fU=x=>Number(x||0).toLocaleString('en-US',{maximumFractionDigits:2});
+const fN=x=>Number(x||0).toLocaleString('en-US',{maximumFractionDigits:2});
+const sgn=x=>x>0?'+':x<0?'−':'';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const hm=ms=>{const d=new Date(ms);return pad(d.getHours())+':'+pad(d.getMinutes());};
+function dayLabel(ms){
+  const d=new Date(ms),t=new Date(); const k=x=>x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate();
+  const y=new Date(t); y.setDate(t.getDate()-1);
+  if(k(d)===k(t)) return '今天'; if(k(d)===k(y)) return '昨天';
+  return (d.getMonth()+1)+'/'+d.getDate()+'（'+'日一二三四五六'[d.getDay()]+'）';
+}
+const toLocalInput=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());};
+const num=v=>{ v=String(v).replace(/,/g,'').trim(); if(v==='') return null; const x=Number(v); return isFinite(x)?x:NaN; };
+
+/* ================= UI 基本 ================= */
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2200);}
+function loading(on){$('load').classList.toggle('on',on);}
+async function run(fn,...a){
+  loading(true);
+  try{ return await api[fn](S.auth,...a); }
+  catch(e){
+    const m=(e&&e.message)||String(e);
+    if(m.startsWith('AUTH:')){ store.set(null); S.auth=null; showLogin(m.slice(5)); }
+    else toast(m.replace(/^Error:\s*/,''));
+    throw e;
+  } finally{ loading(false); }
+}
+function setData(d){ S.me=d.me; S.txs=d.txs; S.bal=replay(S.txs); render(); }
+
+/* ================= 登入 ================= */
+let pickName='';
+async function showLogin(err){
+  $('main').classList.add('hidden'); $('login').classList.remove('hidden');
+  $('loginErr').textContent=err||'';
+  const users=await api.getUsers();
+  $('names').innerHTML=users.map(u=>`<button data-n="${esc(u)}" class="${u===pickName?'on':''}">${esc(u)}</button>`).join('');
+}
+$('names').onclick=e=>{const b=e.target.closest('button');if(!b)return;pickName=b.dataset.n;
+  [...$('names').children].forEach(x=>x.classList.toggle('on',x===b));$('pin').focus();};
+async function doLogin(){
+  if(!pickName){$('loginErr').textContent='請先選名字';return;}
+  const pin=$('pin').value.trim(); if(!pin){$('loginErr').textContent='請輸入 PIN';return;}
+  S.auth={name:pickName,pin};
+  try{ const d=await run('getData'); store.set(S.auth); $('pin').value=''; enterMain(d); }catch(e){}
+}
+$('loginBtn').onclick=doLogin;
+$('pin').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function enterMain(d){ $('login').classList.add('hidden'); $('main').classList.remove('hidden'); setData(d); }
+$('who').onclick=()=>{ if(confirm('要登出 / 切換使用者嗎？')){ store.set(null); S.auth=null; pickName=''; showLogin(); } };
+
+/* ================= 主畫面渲染 ================= */
+function render(){
+  $('who').textContent=S.me;
+  const {U,N}=S.bal;
+  $('balU').textContent=fU(U);
+  $('balN').textContent=(N<0?'−':'')+fN(Math.abs(N));
+  $('balN').className='v '+(N<0?'neg':'n');
+  $('balNs').textContent=N<0?'NTD（HR 先墊）':'NTD';
+  $('debt').classList.toggle('hidden',!(N<-0.005));
+  $('debtTxt').textContent=`HR 先墊了 NT$ ${fN(-N)}，還沒用 U 沖銷`;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
+  S.tab==='tx'?renderTx():renderLog();
+}
+function effText(t){
+  const e=S.bal.eff[t.id]||{dU:0,dN:0};
+  const out=[];
+  if(Math.abs(e.dU)>1e-9) out.push(`<div class="${e.dU>0?'plus':'minus'}">${sgn(e.dU)}${fU(Math.abs(e.dU))} U</div>`);
+  if(Math.abs(e.dN)>1e-9) out.push(`<div class="${e.dN>0?'plus':'minus'}">${sgn(e.dN)}${fN(Math.abs(e.dN))} N</div>`);
+  return out.join('')||'<div>0</div>';
+}
+function title(t){
+  let s=TYPES[t.type];
+  if(t.type==='WITHDRAW') s+=` NT$ ${fN(t.n)}`;
+  else if(t.u!=null) s+=` ${fU(Math.abs(t.u))} U`;
+  if(t.rate) s+=` @${t.rate}`;
+  return s;
+}
+function renderTx(){
+  const list=[...S.txs].sort((a,b)=>(b.date-a.date)||(b.createdAt-a.createdAt));
+  if(!list.length){$('list').innerHTML='<div class="empty">還沒有紀錄<br>按下方按鈕新增第一筆</div>';return;}
+  let html='',last='';
+  list.slice(0,S.show).forEach(t=>{
+    const dl=dayLabel(t.date); if(dl!==last){html+=`<div class="day">${dl}</div>`;last=dl;}
+    const e=S.bal.eff[t.id]||{};
+    const sub=[hm(t.date),t.by,e.short>0.005?`欠 NT$${fN(e.short)}`:'',t.editBy?'已修改':'',t.note].filter(Boolean).map(esc).join(' · ');
+    html+=`<button class="item" data-id="${esc(t.id)}"><div class="ic ${t.type}">${ICON[t.type]}</div>
+      <div class="mid"><div class="t1">${esc(title(t))}</div><div class="t2">${sub}</div></div>
+      <div class="amt">${effText(t)}</div></button>`;
+  });
+  if(list.length>S.show) html+=`<button class="more" id="more">顯示更多（還有 ${list.length-S.show} 筆）</button>`;
+  $('list').innerHTML=html;
+}
+async function renderLog(){
+  $('list').innerHTML='<div class="empty">載入中…</div>';
+  let log; try{ log=await run('getLog'); }catch(e){ return; }
+  if(S.tab!=='log') return;
+  if(!log.length){$('list').innerHTML='<div class="empty">還沒有編輯紀錄</div>';return;}
+  $('list').innerHTML=log.map(l=>{const d=new Date(l.t);
+    return `<div class="logi"><div class="h"><span><b>${esc(l.user)}</b>　${d.getMonth()+1}/${d.getDate()} ${hm(l.t)}</span><span class="badge ${esc(l.action)}">${esc(l.action)}</span></div>
+    ${l.before?`<div class="b">前：${esc(l.before)}</div>`:''}${l.after?`<div class="a">後：${esc(l.after)}</div>`:''}</div>`;}).join('');
+}
+$('list').onclick=e=>{
+  if(e.target.id==='more'){S.show+=50;renderTx();return;}
+  const it=e.target.closest('.item'); if(!it) return;
+  const t=S.txs.find(x=>x.id===it.dataset.id); if(t) openSheet(t.type,t);
+};
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.tab;render();};
+$('refresh').onclick=async()=>{try{setData(await run('getData'));toast('已更新');}catch(e){}};
+
+/* ================= 表單 ================= */
+const HINT={
+  DEPOSIT:'MT 給 HR U。<b>有匯率</b> → 直接變成 N Credit；<b>沒匯率</b> → 先存成 U 餘額。',
+  WITHDRAW:'HR 給 MT 台幣。<b>填匯率</b> → 從 U 餘額換算扣除，U 不夠的部分自動記為欠款；<b>不填</b> → 從 N Credit 扣。',
+  CONVERT:'把 U 餘額依匯率轉成 N Credit，用來沖銷 HR 先墊的錢。U 或 N 填一個就好。',
+};
+function recentRates(){
+  const seen=new Set(),out=[];
+  [...S.txs].sort((a,b)=>b.date-a.date).forEach(t=>{if(t.rate&&!seen.has(t.rate)&&out.length<4){seen.add(t.rate);out.push(t.rate);}});
+  return out;
+}
+function openSheet(type,t,prefill){
+  const f=S.f; f.open=true; f.id=t?t.id:null; f.createdAt=t?t.createdAt:Date.now();
+  f.sign=t&&t.u<0&&t.type!=='WITHDRAW'?-1:1;
+  $('iU').value=t&&t.u!=null&&t.type!=='WITHDRAW'?r6(Math.abs(t.u)):'';
+  $('iN').value=t&&t.n!=null?(t.type==='WITHDRAW'?t.n:r6(Math.abs(t.n))):'';
+  $('iRate').value=t&&t.rate?t.rate:'';
+  $('iNote').value=t?t.note||'':'';
+  $('iDate').value=toLocalInput(t?t.date:Date.now());
+  f.last=t&&t.type==='WITHDRAW'?'n':'u';
+  if(prefill){ $('iN').value=prefill.n; f.last='n'; }
+  $('sTitle').textContent=t?'修改紀錄':'新增紀錄';
+  $('del').classList.toggle('hidden',!t);
+  $('chips').innerHTML=recentRates().map(r=>`<button type="button" data-r="${r}">${r}</button>`).join('');
+  setType(type);
+  $('sheetBg').classList.remove('hidden'); $('sheet').classList.add('open');
+  setTimeout(()=>{ (prefill?$('iRate'):(type==='WITHDRAW'?$('iN'):$('iU'))).focus(); },230);
+}
+function closeSheet(){ S.f.open=false; $('sheet').classList.remove('open'); $('sheetBg').classList.add('hidden'); document.activeElement&&document.activeElement.blur(); }
+$('sClose').onclick=closeSheet; $('sheetBg').onclick=closeSheet;
+function setType(type){
+  const f=S.f; f.type=type;
+  [...$('seg').children].forEach(b=>b.classList.toggle('on',b.dataset.t===type));
+  $('hint').innerHTML=HINT[type];
+  const wd=type==='WITHDRAW';
+  $('fN').style.order=wd?1:3; $('fRate').style.order=2; $('fU').style.order=wd?3:1;
+  $('sign').classList.toggle('hidden',wd);
+  $('iU').readOnly=wd; $('iU').placeholder=wd?'填匯率後自動換算':'0';
+  $('lbU').textContent=wd?'對應 U（自動）':'U（USDT）';
+  $('lbN').textContent=wd?'領回 N（NTD）':'N（NTD）';
+  $('lbRate').textContent=type==='CONVERT'?'匯率（必填）':'匯率（選填）';
+  $('iRate').placeholder=type==='DEPOSIT'?'拿到 N 才知道可以先空著':type==='WITHDRAW'?'不填 = 從 N Credit 扣':'例如 32.15';
+  if(wd) f.last='n';
+  if(wd){ $('iU').value=''; }
+  recalc();
+}
+$('seg').onclick=e=>{const b=e.target.closest('button');if(b)setType(b.dataset.t);};
+$('sign').onclick=()=>{S.f.sign*=-1;recalc();};
+$('chips').onclick=e=>{const b=e.target.closest('button');if(!b)return;$('iRate').value=b.dataset.r;recalc();};
+$('iU').addEventListener('input',()=>{S.f.last='u';recalc();});
+$('iN').addEventListener('input',()=>{S.f.last='n';recalc();});
+$('iRate').addEventListener('input',recalc);
+$('iDate').addEventListener('change',recalc);
+['iU','iN','iRate'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save();}}));
+$('iNote').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save();}});
+
+function recalc(){
+  const f=S.f, rate=num($('iRate').value);
+  const okRate=rate>0;
+  if(f.type==='WITHDRAW'){
+    const n=num($('iN').value);
+    $('iU').value=okRate&&n>0?r6(n/rate):'';
+  } else {
+    if(f.last==='u'){ const u=num($('iU').value); $('iN').value=okRate&&u>0?Math.round(u*rate*100)/100:''; }
+    else { const n=num($('iN').value); $('iU').value=okRate&&n>0?r6(n/rate):''; }
+  }
+  $('iN').readOnly=f.type==='DEPOSIT'&&!okRate&&f.last!=='n';
+  $('iN').placeholder=f.type==='DEPOSIT'&&!okRate?'有匯率才會換算':'0';
+  $('sign').textContent=f.sign<0?'−':'＋';
+  $('sign').classList.toggle('neg',f.sign<0);
+  preview();
+}
+function draft(){
+  const f=S.f, rate=num($('iRate').value), u=num($('iU').value), n=num($('iN').value);
+  const t={type:f.type,rate:rate>0?rate:null,note:$('iNote').value.trim(),
+    date:$('iDate').value?new Date($('iDate').value).getTime():Date.now()};
+  if(f.type==='WITHDRAW'){ t.n=n; t.u=t.rate&&n>0?r6(n/t.rate):null; }
+  else {
+    const uu=u!=null&&!isNaN(u)?u*f.sign:null;
+    t.u=uu; t.n=t.rate&&uu?Math.round(uu*t.rate*1e4)/1e4:null;
+  }
+  return t;
+}
+function validate(t){
+  if(isNaN(t.rate)||isNaN(t.u)||isNaN(t.n)) return '數字格式錯誤';
+  if(t.type==='WITHDRAW') return t.n>0?'':'請輸入領回的 N';
+  if(t.type==='CONVERT'&&!t.rate) return '請輸入匯率';
+  if(!t.u) return t.type==='DEPOSIT'&&num($('iN').value)>0?'請輸入匯率才能換算 U':'請輸入 U';
+  return '';
+}
+function preview(){
+  const t=draft(), err=validate(t);
+  if(err){ $('preview').innerHTML=`<span style="color:var(--sub)">${esc(err)}</span>`; $('save').disabled=true; return; }
+  $('save').disabled=false;
+  const others=S.txs.filter(x=>x.id!==S.f.id);
+  const before=replay(others);
+  const cand=Object.assign({id:'__c',createdAt:S.f.createdAt},t);
+  const after=replay(others.concat([cand])), e=after.eff.__c;
+  const line=(k,a,b,fmt)=>`${k}　${fmt(a)} → <b class="${b<a-1e-9?'minus':b>a+1e-9?'plus':''}">${fmt(b)}</b>`;
+  const nf=x=>(x<0?'−':'')+fN(Math.abs(x));
+  let h=line('U 餘額',before.U,after.U,fU)+'<br>'+line('N Credit',before.N,after.N,nf);
+  if(e&&e.short>0.005) h+=`<br><span class="minus">U 不夠，其中 NT$ ${fN(e.short)} 記為 HR 先墊</span>`;
+  $('preview').innerHTML=h;
+}
+async function save(){
+  if(S.busy) return;
+  const t=draft(), err=validate(t); if(err){toast(err);return;}
+  S.busy=true; $('save').disabled=true;
+  try{
+    const d=S.f.id?await run('updateTx',S.f.id,t):await run('addTx',t);
+    setData(d); closeSheet(); toast(S.f.id?'已修改':'已記錄');
+  }catch(e){} finally{ S.busy=false; $('save').disabled=false; }
+}
+$('save').onclick=save;
+$('del').onclick=async()=>{
+  if(!S.f.id||!confirm('確定刪除這筆？（Log 會留下紀錄）')) return;
+  try{ setData(await run('deleteTx',S.f.id)); closeSheet(); toast('已刪除'); }catch(e){}
+};
+document.querySelector('.bar').onclick=e=>{const b=e.target.closest('button');if(b)openSheet(b.dataset.open);};
+$('debtBtn').onclick=()=>{
+  const debt=-S.bal.N;
+  openSheet(S.bal.U>0?'CONVERT':'DEPOSIT',null,{n:Math.round(debt*100)/100});
+};
+
+/* ================= 自動同步 ================= */
+async function sync(){ if(!S.auth||S.f.open||document.hidden) return; try{ setData(await run('getData')); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) sync(); });
+setInterval(sync,60000);
+
+/* ================= 啟動 ================= */
+(async function init(){
+  if(DEMO){ $('demoBar').classList.remove('hidden'); }
+  const a=store.get();
+  if(a){ S.auth=a; try{ enterMain(await run('getData')); return; }catch(e){ return; } }
+  showLogin();
+})();
+</script>
+</body>
+</html>
