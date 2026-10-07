@@ -152,8 +152,8 @@ button:disabled{opacity:.5}
       </div>
     </header>
     <section class="bal">
-      <div class="c"><div class="k">U 餘額（未定匯率）</div><div id="balU" class="v u">0</div><div class="s">USDT</div></div>
-      <div class="c"><div class="k">N Credit</div><div id="balN" class="v n">0</div><div id="balNs" class="s">NTD</div></div>
+      <div class="c"><div class="k" id="kU">U 餘額（未定匯率）</div><div id="balU" class="v u">0</div><div class="s">USDT</div></div>
+      <div class="c"><div class="k" id="kN">N 額度</div><div id="balN" class="v n">0</div><div id="balNs" class="s">NTD</div></div>
     </section>
     <div id="debt" class="debt hidden"><span id="debtTxt"></span><button id="debtBtn">沖銷</button></div>
     <div class="tabs">
@@ -165,7 +165,7 @@ button:disabled{opacity:.5}
   <nav class="bar"><div class="in">
     <button class="b-dep" data-open="DEPOSIT">＋ 儲值 U</button>
     <button class="b-wd" data-open="WITHDRAW">領回 N</button>
-    <button class="b-cv" data-open="CONVERT">轉換／沖銷</button>
+    <button class="b-cv" data-open="CONVERT">沖銷</button>
   </div></nav>
 </div>
 
@@ -177,7 +177,7 @@ button:disabled{opacity:.5}
   <div id="seg" class="seg">
     <button data-t="DEPOSIT">儲值 U</button>
     <button data-t="WITHDRAW">領回 N</button>
-    <button data-t="CONVERT">轉換／沖銷</button>
+    <button data-t="CONVERT">沖銷</button>
   </div>
   <div id="hint" class="hint"></div>
   <div class="fields">
@@ -256,11 +256,42 @@ function demoApi(){
 
 /* ================= 狀態 ================= */
 const $=id=>document.getElementById(id);
-const TYPES={DEPOSIT:'儲值 U',WITHDRAW:'領回 N',CONVERT:'轉換'};
+/* 依登入者切換用語：MM（MT）是存 U 的一方，RR（HR）是付台幣的一方 */
+const VIEWS={
+  MM:{
+    TYPES:{DEPOSIT:'儲值 U',WITHDRAW:'領回 N',CONVERT:'沖銷'},
+    ICON:{DEPOSIT:'存',WITHDRAW:'領',CONVERT:'沖'},
+    BTN:{DEPOSIT:'＋ 儲值 U',WITHDRAW:'領回 N',CONVERT:'沖銷'},
+    kU:'U 餘額（未定匯率）', uLine:'U 餘額',
+    HINT:{
+      DEPOSIT:'你給 RR U。<b>有匯率</b> → 直接變成 N 額度；<b>沒匯率</b> → 先存成 U 餘額。',
+      WITHDRAW:'RR 給你台幣。<b>填匯率</b> → 從 U 餘額換算扣除，U 不夠的部分記為 RR 先墊；<b>不填</b> → 從 N 額度扣。',
+      CONVERT:'把 U 餘額依匯率換成 N 額度，用來沖銷 RR 先墊的錢。U 或 N 填一個就好。'},
+    noRate:'不填 = 從 N 額度扣',
+    short:x=>`RR 先墊 NT$${fN(x)}`,
+    shortPv:x=>`U 不夠，其中 NT$ ${fN(x)} 記為 RR 先墊`,
+    debt:x=>`RR 先墊了 NT$ ${fN(x)}，還沒用 U 沖銷`,
+  },
+  RR:{
+    TYPES:{DEPOSIT:'收到 U',WITHDRAW:'付出 N',CONVERT:'沖銷'},
+    ICON:{DEPOSIT:'收',WITHDRAW:'付',CONVERT:'沖'},
+    BTN:{DEPOSIT:'＋ 收到 U',WITHDRAW:'付出 N',CONVERT:'沖銷'},
+    kU:'MM 寄放的 U（未定匯率）', uLine:'MM 寄放的 U',
+    HINT:{
+      DEPOSIT:'MM 給你 U。<b>有匯率</b> → 直接換成 N 額度；<b>沒匯率</b> → 先記成 MM 寄放的 U。',
+      WITHDRAW:'你付台幣給 MM。<b>填匯率</b> → 從 MM 寄放的 U 換算扣除，不夠的部分記為你多給；<b>不填</b> → 從你欠 MM 的 N 扣。',
+      CONVERT:'把 MM 寄放的 U 依匯率換成 N 額度，用來沖銷你多給的錢。U 或 N 填一個就好。'},
+    noRate:'不填 = 從你欠 MM 的 N 扣',
+    short:x=>`你多給 NT$${fN(x)}`,
+    shortPv:x=>`MM 寄放的 U 不夠，其中 NT$ ${fN(x)} 記為你多給`,
+    debt:x=>`你多給了 MM NT$ ${fN(x)}，等 MM 補 U 沖銷`,
+  },
+};
+const isRR=()=>dn(S.me)==='RR';
+const V=()=>VIEWS[isRR()?'RR':'MM'];
 /* 畫面顯示的名字（伺服器端仍用 MT / HR，紀錄不受影響）*/
 const NAME={MT:'MM',HR:'RR'};
 const dn=n=>NAME[n]||n;
-const ICON={DEPOSIT:'存',WITHDRAW:'領',CONVERT:'轉'};
 const S={auth:null,me:'',txs:[],bal:{U:0,N:0,eff:{}},tab:'tx',show:50,
   f:{open:false,id:null,type:'DEPOSIT',sign:1,last:'u',createdAt:0},busy:false};
 const store={get(){try{return JSON.parse(localStorage.getItem('utn_auth')||'null')}catch(e){return null}},
@@ -339,12 +370,24 @@ $('who').onclick=()=>{ if(confirm('要登出 / 切換使用者嗎？')){ store.s
 function render(){
   $('who').textContent=dn(S.me);
   const {U,N}=S.bal;
+  const v=V();
+  $('kU').textContent=v.kU;
   $('balU').textContent=fU(U);
-  $('balN').textContent=(N<0?'−':'')+fN(Math.abs(N));
-  $('balN').className='v '+(N<0?'neg':'n');
-  $('balNs').textContent=N<0?'NTD（RR 先墊）':'NTD';
+  if(isRR()){
+    $('kN').textContent=N<0?'多給 MM 的 N':'欠 MM 的 N';
+    $('balN').textContent=fN(Math.abs(N));
+    $('balN').className='v '+(N<0?'u':'n');
+    $('balNs').textContent='NTD';
+  } else {
+    $('kN').textContent='N 額度';
+    $('balN').textContent=(N<0?'−':'')+fN(Math.abs(N));
+    $('balN').className='v '+(N<0?'neg':'n');
+    $('balNs').textContent=N<0?'NTD（RR 先墊）':'NTD';
+  }
+  document.querySelectorAll('.bar button').forEach(b=>b.textContent=v.BTN[b.dataset.open]);
+  document.querySelectorAll('#seg button').forEach(b=>b.textContent=v.TYPES[b.dataset.t]);
   $('debt').classList.toggle('hidden',!(N<-0.005));
-  $('debtTxt').textContent=`RR 先墊了 NT$ ${fN(-N)}，還沒用 U 沖銷`;
+  $('debtTxt').textContent=v.debt(-N);
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
   S.tab==='tx'?renderTx():renderLog();
 }
@@ -352,11 +395,12 @@ function effText(t){
   const e=S.bal.eff[t.id]||{dU:0,dN:0};
   const out=[];
   if(Math.abs(e.dU)>1e-9) out.push(`<div class="${e.dU>0?'plus':'minus'}">${sgn(e.dU)}${fU(Math.abs(e.dU))} U</div>`);
-  if(Math.abs(e.dN)>1e-9) out.push(`<div class="${e.dN>0?'plus':'minus'}">${sgn(e.dN)}${fN(Math.abs(e.dN))} N</div>`);
+  const dN=isRR()?-e.dN:e.dN;
+  if(Math.abs(dN)>1e-9) out.push(`<div class="${dN>0?'plus':'minus'}">${sgn(dN)}${fN(Math.abs(dN))} N</div>`);
   return out.join('')||'<div>0</div>';
 }
 function title(t){
-  let s=TYPES[t.type];
+  let s=V().TYPES[t.type];
   if(t.type==='WITHDRAW') s+=` NT$ ${fN(t.n)}`;
   else if(t.u!=null) s+=` ${fU(Math.abs(t.u))} U`;
   if(t.rate) s+=` @${t.rate}`;
@@ -369,8 +413,8 @@ function renderTx(){
   list.slice(0,S.show).forEach(t=>{
     const dl=dayLabel(t.date); if(dl!==last){html+=`<div class="day">${dl}</div>`;last=dl;}
     const e=S.bal.eff[t.id]||{};
-    const sub=[hm(t.date),dn(t.by),e.short>0.005?`欠 NT$${fN(e.short)}`:'',t.editBy?'已修改':'',t.note].filter(Boolean).map(esc).join(' · ');
-    html+=`<button class="item" data-id="${esc(t.id)}"><div class="ic ${t.type}">${ICON[t.type]}</div>
+    const sub=[hm(t.date),dn(t.by),e.short>0.005?V().short(e.short):'',t.editBy?'已修改':'',t.note].filter(Boolean).map(esc).join(' · ');
+    html+=`<button class="item" data-id="${esc(t.id)}"><div class="ic ${t.type}">${V().ICON[t.type]}</div>
       <div class="mid"><div class="t1">${esc(title(t))}</div><div class="t2">${sub}</div></div>
       <div class="amt">${effText(t)}</div></button>`;
   });
@@ -395,11 +439,6 @@ document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');i
 $('refresh').onclick=async()=>{try{setData(await run('getData'));toast('已更新');}catch(e){}};
 
 /* ================= 表單 ================= */
-const HINT={
-  DEPOSIT:'MM 給 RR U。<b>有匯率</b> → 直接變成 N Credit；<b>沒匯率</b> → 先存成 U 餘額。',
-  WITHDRAW:'RR 給 MM 台幣。<b>填匯率</b> → 從 U 餘額換算扣除，U 不夠的部分自動記為欠款；<b>不填</b> → 從 N Credit 扣。',
-  CONVERT:'把 U 餘額依匯率轉成 N Credit，用來沖銷 RR 先墊的錢。U 或 N 填一個就好。',
-};
 function recentRates(){
   const seen=new Set(),out=[];
   [...S.txs].sort((a,b)=>b.date-a.date).forEach(t=>{if(t.rate&&!seen.has(t.rate)&&out.length<4){seen.add(t.rate);out.push(t.rate);}});
@@ -427,15 +466,15 @@ $('sClose').onclick=closeSheet; $('sheetBg').onclick=closeSheet;
 function setType(type){
   const f=S.f; f.type=type;
   [...$('seg').children].forEach(b=>b.classList.toggle('on',b.dataset.t===type));
-  $('hint').innerHTML=HINT[type];
+  $('hint').innerHTML=V().HINT[type];
   const wd=type==='WITHDRAW';
   $('fN').style.order=wd?1:3; $('fRate').style.order=2; $('fU').style.order=wd?3:1;
   $('sign').classList.toggle('hidden',wd);
   $('iU').readOnly=wd; $('iU').placeholder=wd?'填匯率後自動換算':'0';
   $('lbU').textContent=wd?'對應 U（自動）':'U（USDT）';
-  $('lbN').textContent=wd?'領回 N（NTD）':'N（NTD）';
+  $('lbN').textContent=wd?V().TYPES.WITHDRAW+'（NTD）':'N（NTD）';
   $('lbRate').textContent=type==='CONVERT'?'匯率（必填）':'匯率（選填）';
-  $('iRate').placeholder=type==='DEPOSIT'?'拿到 N 才知道可以先空著':type==='WITHDRAW'?'不填 = 從 N Credit 扣':'例如 32.15';
+  $('iRate').placeholder=type==='DEPOSIT'?'拿到 N 才知道可以先空著':type==='WITHDRAW'?V().noRate:'例如 32.15';
   if(wd) f.last='n';
   if(wd){ $('iU').value=''; }
   recalc();
@@ -494,8 +533,14 @@ function preview(){
   const after=replay(others.concat([cand])), e=after.eff.__c;
   const line=(k,a,b,fmt)=>`${k}　${fmt(a)} → <b class="${b<a-1e-9?'minus':b>a+1e-9?'plus':''}">${fmt(b)}</b>`;
   const nf=x=>(x<0?'−':'')+fN(Math.abs(x));
-  let h=line('U 餘額',before.U,after.U,fU)+'<br>'+line('N Credit',before.N,after.N,nf);
-  if(e&&e.short>0.005) h+=`<br><span class="minus">U 不夠，其中 NT$ ${fN(e.short)} 記為 RR 先墊</span>`;
+  const v=V();
+  let h=line(v.uLine,before.U,after.U,fU)+'<br>';
+  if(isRR()){
+    const w=x=>x<0?`多給 MM ${fN(-x)}`:`欠 MM ${fN(x)}`;
+    const c=after.N<before.N-1e-9?'plus':after.N>before.N+1e-9?'minus':'';
+    h+=`N　${w(before.N)} → <b class="${c}">${w(after.N)}</b>`;
+  } else h+=line('N 額度',before.N,after.N,nf);
+  if(e&&e.short>0.005) h+=`<br><span class="minus">${v.shortPv(e.short)}</span>`;
   $('preview').innerHTML=h;
 }
 async function save(){
