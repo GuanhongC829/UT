@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>U↔N 記帳</title>
+<title>UU</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="U↔N">
+<meta name="apple-mobile-web-app-title" content="UU">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
 <link rel="apple-touch-icon" href="icon.png">
@@ -133,7 +133,7 @@ button:disabled{opacity:.5}
 
 <!-- 登入 -->
 <div id="login" class="login hidden">
-  <h1>U ↔ N 記帳</h1>
+  <h1>UU</h1>
   <p>選你的名字，輸入 PIN。之後這支手機會記住你。</p>
   <div id="names" class="names"></div>
   <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="PIN" autocomplete="off">
@@ -145,7 +145,7 @@ button:disabled{opacity:.5}
 <div id="main" class="hidden">
   <div class="wrap">
     <header>
-      <h1>U ↔ N</h1>
+      <h1>UU</h1>
       <div class="hbtns">
         <button id="refresh" class="chip" aria-label="重新整理">↻</button>
         <button id="who" class="chip"></button>
@@ -238,7 +238,7 @@ function demoApi(){
   const seed=[
     {type:'DEPOSIT',u:1000,rate:null,n:null,note:'轉帳 TRC20',date:now-50*H},
     {type:'WITHDRAW',n:16080,rate:32.16,u:500,note:'面交',date:now-26*H},
-    {type:'WITHDRAW',n:20000,rate:32.2,u:621.118,note:'HR 先給',date:now-2*H},
+    {type:'WITHDRAW',n:20000,rate:32.2,u:621.118,note:'RR 先給',date:now-2*H},
   ];
   seed.forEach(s=>txs.push(Object.assign({id:'D'+seq++,by:'MT',createdAt:s.date,editBy:'',editAt:0,deleted:false},s)));
   const d=a=>({me:a?a.name:'MT',txs:txs.filter(t=>!t.deleted).map(t=>Object.assign({},t))});
@@ -257,6 +257,9 @@ function demoApi(){
 /* ================= 狀態 ================= */
 const $=id=>document.getElementById(id);
 const TYPES={DEPOSIT:'儲值 U',WITHDRAW:'領回 N',CONVERT:'轉換'};
+/* 畫面顯示的名字（伺服器端仍用 MT / HR，紀錄不受影響）*/
+const NAME={MT:'MM',HR:'RR'};
+const dn=n=>NAME[n]||n;
 const ICON={DEPOSIT:'存',WITHDRAW:'領',CONVERT:'轉'};
 const S={auth:null,me:'',txs:[],bal:{U:0,N:0,eff:{}},tab:'tx',show:50,
   f:{open:false,id:null,type:'DEPOSIT',sign:1,last:'u',createdAt:0},busy:false};
@@ -317,7 +320,7 @@ async function showLogin(err){
   $('main').classList.add('hidden'); $('login').classList.remove('hidden');
   $('loginErr').textContent=err||'';
   const users=await api.getUsers();
-  $('names').innerHTML=users.map(u=>`<button data-n="${esc(u)}" class="${u===pickName?'on':''}">${esc(u)}</button>`).join('');
+  $('names').innerHTML=users.map(u=>`<button data-n="${esc(u)}" class="${u===pickName?'on':''}">${esc(dn(u))}</button>`).join('');
 }
 $('names').onclick=e=>{const b=e.target.closest('button');if(!b)return;pickName=b.dataset.n;
   [...$('names').children].forEach(x=>x.classList.toggle('on',x===b));$('pin').focus();};
@@ -334,14 +337,14 @@ $('who').onclick=()=>{ if(confirm('要登出 / 切換使用者嗎？')){ store.s
 
 /* ================= 主畫面渲染 ================= */
 function render(){
-  $('who').textContent=S.me;
+  $('who').textContent=dn(S.me);
   const {U,N}=S.bal;
   $('balU').textContent=fU(U);
   $('balN').textContent=(N<0?'−':'')+fN(Math.abs(N));
   $('balN').className='v '+(N<0?'neg':'n');
-  $('balNs').textContent=N<0?'NTD（HR 先墊）':'NTD';
+  $('balNs').textContent=N<0?'NTD（RR 先墊）':'NTD';
   $('debt').classList.toggle('hidden',!(N<-0.005));
-  $('debtTxt').textContent=`HR 先墊了 NT$ ${fN(-N)}，還沒用 U 沖銷`;
+  $('debtTxt').textContent=`RR 先墊了 NT$ ${fN(-N)}，還沒用 U 沖銷`;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
   S.tab==='tx'?renderTx():renderLog();
 }
@@ -366,7 +369,7 @@ function renderTx(){
   list.slice(0,S.show).forEach(t=>{
     const dl=dayLabel(t.date); if(dl!==last){html+=`<div class="day">${dl}</div>`;last=dl;}
     const e=S.bal.eff[t.id]||{};
-    const sub=[hm(t.date),t.by,e.short>0.005?`欠 NT$${fN(e.short)}`:'',t.editBy?'已修改':'',t.note].filter(Boolean).map(esc).join(' · ');
+    const sub=[hm(t.date),dn(t.by),e.short>0.005?`欠 NT$${fN(e.short)}`:'',t.editBy?'已修改':'',t.note].filter(Boolean).map(esc).join(' · ');
     html+=`<button class="item" data-id="${esc(t.id)}"><div class="ic ${t.type}">${ICON[t.type]}</div>
       <div class="mid"><div class="t1">${esc(title(t))}</div><div class="t2">${sub}</div></div>
       <div class="amt">${effText(t)}</div></button>`;
@@ -380,7 +383,7 @@ async function renderLog(){
   if(S.tab!=='log') return;
   if(!log.length){$('list').innerHTML='<div class="empty">還沒有編輯紀錄</div>';return;}
   $('list').innerHTML=log.map(l=>{const d=new Date(l.t);
-    return `<div class="logi"><div class="h"><span><b>${esc(l.user)}</b>　${d.getMonth()+1}/${d.getDate()} ${hm(l.t)}</span><span class="badge ${esc(l.action)}">${esc(l.action)}</span></div>
+    return `<div class="logi"><div class="h"><span><b>${esc(dn(l.user))}</b>　${d.getMonth()+1}/${d.getDate()} ${hm(l.t)}</span><span class="badge ${esc(l.action)}">${esc(l.action)}</span></div>
     ${l.before?`<div class="b">前：${esc(l.before)}</div>`:''}${l.after?`<div class="a">後：${esc(l.after)}</div>`:''}</div>`;}).join('');
 }
 $('list').onclick=e=>{
@@ -393,9 +396,9 @@ $('refresh').onclick=async()=>{try{setData(await run('getData'));toast('已更�
 
 /* ================= 表單 ================= */
 const HINT={
-  DEPOSIT:'MT 給 HR U。<b>有匯率</b> → 直接變成 N Credit；<b>沒匯率</b> → 先存成 U 餘額。',
-  WITHDRAW:'HR 給 MT 台幣。<b>填匯率</b> → 從 U 餘額換算扣除，U 不夠的部分自動記為欠款；<b>不填</b> → 從 N Credit 扣。',
-  CONVERT:'把 U 餘額依匯率轉成 N Credit，用來沖銷 HR 先墊的錢。U 或 N 填一個就好。',
+  DEPOSIT:'MM 給 RR U。<b>有匯率</b> → 直接變成 N Credit；<b>沒匯率</b> → 先存成 U 餘額。',
+  WITHDRAW:'RR 給 MM 台幣。<b>填匯率</b> → 從 U 餘額換算扣除，U 不夠的部分自動記為欠款；<b>不填</b> → 從 N Credit 扣。',
+  CONVERT:'把 U 餘額依匯率轉成 N Credit，用來沖銷 RR 先墊的錢。U 或 N 填一個就好。',
 };
 function recentRates(){
   const seen=new Set(),out=[];
@@ -492,7 +495,7 @@ function preview(){
   const line=(k,a,b,fmt)=>`${k}　${fmt(a)} → <b class="${b<a-1e-9?'minus':b>a+1e-9?'plus':''}">${fmt(b)}</b>`;
   const nf=x=>(x<0?'−':'')+fN(Math.abs(x));
   let h=line('U 餘額',before.U,after.U,fU)+'<br>'+line('N Credit',before.N,after.N,nf);
-  if(e&&e.short>0.005) h+=`<br><span class="minus">U 不夠，其中 NT$ ${fN(e.short)} 記為 HR 先墊</span>`;
+  if(e&&e.short>0.005) h+=`<br><span class="minus">U 不夠，其中 NT$ ${fN(e.short)} 記為 RR 先墊</span>`;
   $('preview').innerHTML=h;
 }
 async function save(){
